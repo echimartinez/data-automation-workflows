@@ -1,0 +1,194 @@
+{
+  "name": "AI-Powered Data Classifier with Claude API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "classify-data",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nif (!body || !body.text) {\n  throw new Error('Missing required field: text');\n}\n\nconst prompt = `You are a data classification assistant. Analyze the following text and return a JSON object with these fields:\n- category: one of [\"complaint\", \"request\", \"question\", \"feedback\", \"urgent\"]\n- priority: one of [\"low\", \"medium\", \"high\"]\n- summary: a one-sentence summary of the text (max 20 words)\n- sentiment: one of [\"positive\", \"neutral\", \"negative\"]\n\nRespond ONLY with the JSON object, no extra text or markdown.\n\nText to analyze:\n\"${body.text}\"`;\n\nreturn [{\n  json: {\n    original_text: body.text,\n    source: body.source || 'webhook',\n    received_at: new Date().toISOString(),\n    prompt: prompt\n  }\n}];"
+      },
+      "id": "prepare-prompt",
+      "name": "Prepare Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 256,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.prompt }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "call-claude-api",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_ANTHROPIC_CREDENTIAL_ID",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const previousData = $('Prepare Prompt').first().json;\nconst claudeResponse = $input.first().json;\n\n// Extract text from Claude response\nconst rawText = claudeResponse.content[0].text;\n\n// Parse JSON response from Claude\nlet classification;\ntry {\n  classification = JSON.parse(rawText);\n} catch (e) {\n  throw new Error('Claude did not return valid JSON: ' + rawText);\n}\n\nreturn [{\n  json: {\n    original_text: previousData.original_text,\n    source: previousData.source,\n    received_at: previousData.received_at,\n    processed_at: new Date().toISOString(),\n    category: classification.category,\n    priority: classification.priority,\n    summary: classification.summary,\n    sentiment: classification.sentiment,\n    model_used: claudeResponse.model,\n    tokens_used: claudeResponse.usage.input_tokens + claudeResponse.usage.output_tokens\n  }\n}];"
+      },
+      "id": "parse-response",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Classifications",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "received_at": "={{ $json.received_at }}",
+            "processed_at": "={{ $json.processed_at }}",
+            "source": "={{ $json.source }}",
+            "original_text": "={{ $json.original_text }}",
+            "category": "={{ $json.category }}",
+            "priority": "={{ $json.priority }}",
+            "summary": "={{ $json.summary }}",
+            "sentiment": "={{ $json.sentiment }}",
+            "model_used": "={{ $json.model_used }}",
+            "tokens_used": "={{ $json.tokens_used }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "save-to-sheet",
+      "name": "Save to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1120, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"result\": {\n    \"category\": \"{{ $('Parse Claude Response').first().json.category }}\",\n    \"priority\": \"{{ $('Parse Claude Response').first().json.priority }}\",\n    \"summary\": \"{{ $('Parse Claude Response').first().json.summary }}\",\n    \"sentiment\": \"{{ $('Parse Claude Response').first().json.sentiment }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "n8nVersion": "1.0.0"
+  }
+}

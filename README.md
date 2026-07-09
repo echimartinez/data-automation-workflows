@@ -10,13 +10,16 @@ A collection of real-world data automation workflows, SQL analytics queries, and
 data-automation-workflows/
 │
 ├── sql/
-│   └── chicago_taxi_kpi_queries.sql   # KPI & SLA analytics on BigQuery public dataset
+│   ├── chicago_taxi_kpi_queries.sql   # KPI & SLA analytics on BigQuery public dataset
+│   └── README.md
 │
 ├── n8n/
-│   └── (coming soon)                  # Automated workflow examples
+│   ├── sheets_monitor_email_notifier.json   # Google Sheets monitor + email notifier
+│   └── README.md
 │
 └── ai-pipelines/
-    └── (coming soon)                  # Claude API + n8n integrations
+    ├── ai_data_classifier.json   # Claude API + n8n classifier
+    └── README.md
 ```
 
 ---
@@ -24,7 +27,7 @@ data-automation-workflows/
 ## 🗂️ Projects
 
 ### 📊 01. Chicago Taxi Trips — KPI & SLA Analytics
-**File:** `sql/chicago_taxi_kpi_queries.sql`
+**Folder:** [`sql/`](./sql/)
 **Dataset:** `bigquery-public-data.chicago_taxi_trips.taxi_trips`
 
 A set of production-ready SQL queries for BigQuery that simulate real FinOps and operations reporting. Built to reflect the kind of analytical work done in large-scale data environments.
@@ -40,12 +43,39 @@ A set of production-ready SQL queries for BigQuery that simulate real FinOps and
 | 05 | Hourly Demand Heatmap | Trips by hour and day of week |
 | 06 | Full KPI Dashboard | Single query summary for executive reporting |
 
-**Key SQL concepts used:**
-- CTEs (`WITH` clauses)
-- Window functions (`LAG`, `OVER`)
-- Conditional aggregation (`COUNTIF`)
-- Timestamp operations (`TIMESTAMP_DIFF`, `FORMAT_TIMESTAMP`, `EXTRACT`)
-- Null-safe division (`NULLIF`)
+**Key SQL concepts:** CTEs · Window functions · Conditional aggregation · Timestamp operations · Null-safe division
+
+---
+
+### 🔄 02. Google Sheets Monitor & Email Notifier
+**Folder:** [`n8n/`](./n8n/)
+
+An n8n automation workflow that monitors a Google Sheet on a schedule, detects pending items, and sends automatic email notifications to the team.
+
+**Flow:**
+```
+Schedule Trigger (every 1h) → Read Google Sheet → Filter Pending Items
+→ Aggregate Results → Build Email Content → Send Email Notification
+```
+
+**Key concepts:** Scheduled automation · Data filtering · Dynamic email generation · Event-driven workflows
+
+---
+
+### 🤖 03. AI-Powered Data Classifier with Claude API
+**Folder:** [`ai-pipelines/`](./ai-pipelines/)
+
+An n8n workflow that receives free text via webhook, sends it to Claude API for intelligent classification, and automatically saves the structured result to a Google Sheet.
+
+**Flow:**
+```
+Webhook (POST) → Prepare Prompt → Call Claude API
+→ Parse Response → Save to Google Sheet → Return Result
+```
+
+**Output per item:** category · priority · summary · sentiment
+
+**Key concepts:** Webhook trigger · LLM integration · Prompt engineering · Structured JSON output · AI + automation pipelines
 
 ---
 
@@ -55,6 +85,8 @@ A set of production-ready SQL queries for BigQuery that simulate real FinOps and
 ![SQL](https://img.shields.io/badge/SQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 ![n8n](https://img.shields.io/badge/n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
+![Google Sheets](https://img.shields.io/badge/Google_Sheets-34A853?style=for-the-badge&logo=google-sheets&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
 ---
 
